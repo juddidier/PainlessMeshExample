@@ -3,11 +3,17 @@ package com.juddidier.painlessmeshandroid;
 
 import android.app.Activity;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.util.Log;
 
 import org.json.JSONObject;
 
+import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
@@ -26,6 +32,7 @@ public class PainlessMesh {
 
     protected Socket connSocket = null;
     protected Semaphore connTerminate;
+    private Boolean connected = false;
 
     protected long myMeshNodeId = 0;
     protected long apMeshNodeId = 0;
@@ -111,8 +118,14 @@ public class PainlessMesh {
         Log.d("PainlessMesh","askApMacAddress()");
         String apSSID = "";
         try {
-            WifiManager wifiMgr = (WifiManager) mainActivity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            apSSID = wifiMgr.getConnectionInfo().getBSSID();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ConnectivityManager cm = (ConnectivityManager) mainActivity.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
+                apSSID = ((WifiInfo) nc.getTransportInfo()).getBSSID();
+            } else {
+                WifiManager wifiMgr = (WifiManager) mainActivity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                apSSID = wifiMgr.getConnectionInfo().getBSSID();
+            }
         } catch (Exception e) {
             Log.e("PainlessMesh.askApMacAddress()", ""+e.getMessage());
             throw e;
@@ -124,12 +137,19 @@ public class PainlessMesh {
         Log.d("PainlessMesh","askApIpAddress()");
         String apMeshIp = "";
         try {
-            int ipAsNumber = ((WifiManager) mainActivity.getApplicationContext().getSystemService(Context.WIFI_SERVICE)).getDhcpInfo().gateway;
-            apMeshIp = ((ipAsNumber & 0xFF) + "." +
-                    ((ipAsNumber >>>= 8) & 0xFF) + "." +
-                    ((ipAsNumber >>>= 8) & 0xFF) + "." +
-                    (ipAsNumber >>> 8 & 0xFF));
-
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ConnectivityManager cm = (ConnectivityManager) mainActivity.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+                LinkProperties lp = cm.getLinkProperties(cm.getActiveNetwork());
+//                byte[] ipBytes = lp.getRoutes().get(0).getGateway().getAddress();
+//                apMeshIp = ipBytes[3]+"."+ipBytes[2]+"."+ipBytes[1]+"."+ipBytes[0];
+                apMeshIp = lp.getRoutes().get(0).getGateway().getAddress().toString();
+            } else {
+                int ipAsNumber = ((WifiManager) mainActivity.getApplicationContext().getSystemService(Context.WIFI_SERVICE)).getDhcpInfo().gateway;
+                apMeshIp = ((ipAsNumber & 0xFF) + "." +
+                        ((ipAsNumber >>>= 8) & 0xFF) + "." +
+                        ((ipAsNumber >>>= 8) & 0xFF) + "." +
+                        (ipAsNumber >>> 8 & 0xFF));
+            }
         } catch (Exception e) {
             Log.e("PainlessMesh.askApIpAddress()", ""+e.getMessage());
             throw e;
@@ -137,6 +157,27 @@ public class PainlessMesh {
         return apMeshIp;
     }
 
+    public Boolean isConnected() {
+        return this.connected;
+    }
+
+    private void setConnected(Boolean _connect) {
+        if (_connect) {
+            this.connected = true;
+            if (meshListener != null) {
+                mainActivity.runOnUiThread(() -> {
+                    meshListener.onConnected();
+                });
+            }
+        } else {
+            this.connected = false;
+            if (meshListener != null) {
+                mainActivity.runOnUiThread(() ->{
+                    meshListener.onDisconnected();
+                });
+            }
+        }
+    }
 
     public void connectMesh() {
         Log.d("PainlessMesh", "connectMesh()");
@@ -187,7 +228,8 @@ public class PainlessMesh {
                     sender = new PainlessMeshSender(caller);
                     sender.startSender();
 
-                    if (meshListener != null) { meshListener.onConnected(); }
+                    setConnected(true);
+//                    if (meshListener != null) { meshListener.onConnected(); }
                 });
             } catch (Exception e) {
                 Log.e("PainlessMesh.connectMesh()", "" + e.getMessage());
@@ -206,16 +248,18 @@ public class PainlessMesh {
                 while (receiver.isAlive() || sender.isAlive()) {
                     Thread.sleep(20);
                 }
+                nodesList.clear();
                 Log.d("PainlessMesh", "...disconnected...");
             }
         } catch (Exception e) {
             Log.e("PainlessMesh.disconnectMesh()", "" + e.getMessage());
         }
-        if (meshListener != null) {
-            mainActivity.runOnUiThread(() -> {
-                meshListener.onDisconnected();
-            });
-        }
+        setConnected(false);
+//        if (meshListener != null) {
+//            mainActivity.runOnUiThread(() -> {
+//                meshListener.onDisconnected();
+//            });
+//        }
     }
     private void intDisconnectMesh() {
         try {
@@ -224,16 +268,18 @@ public class PainlessMesh {
             while (receiver.isAlive() || sender.isAlive()) {
                 Thread.sleep(20);
             }
+            nodesList.clear();
             connSocket.close();
             Log.d("PainlessMesh", "...disconnected...");
         } catch (Exception e) {
             Log.e("PainlessMesh._disconnectMesh()", "" + e.getMessage());
         }
-            if (meshListener != null) {
-                mainActivity.runOnUiThread(() -> {
-                    meshListener.onDisconnected();
-                });
-            }
+        setConnected(false);
+//            if (meshListener != null) {
+//                mainActivity.runOnUiThread(() -> {
+//                    meshListener.onDisconnected();
+//                });
+//            }
     }
 
     public void reconnectSocket() {
