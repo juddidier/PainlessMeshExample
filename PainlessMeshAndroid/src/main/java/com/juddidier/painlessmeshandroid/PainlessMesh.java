@@ -55,7 +55,7 @@ public class PainlessMesh {
     }
 
     public PainlessMesh(Activity _mainActivity, int _meshPort) {
-        Log.d("PainlessMesh", "PainlessMesh()");
+        Log.d("PainlessMesh", "PainlessMesh() <create>");
         mainActivity = _mainActivity;
         meshPort = _meshPort;
         nodesList = new ArrayList<Long>();
@@ -184,6 +184,8 @@ public class PainlessMesh {
         connTerminate = new Semaphore(1);
         if (scheduler == null) {
             scheduler = new PainlessMeshScheduler(this);
+        } else {
+            scheduler.nodeSync.start();
         }
 
         MeshConnThread = new Thread(new MeshConn(this));
@@ -249,7 +251,7 @@ public class PainlessMesh {
                     Thread.sleep(20);
                 }
                 nodesList.clear();
-                Log.d("PainlessMesh", "...disconnected...");
+                Log.d("PainlessMesh", "...disconnected, nodes: "+nodesList.size()+" ...");
             }
         } catch (Exception e) {
             Log.e("PainlessMesh.disconnectMesh()", "" + e.getMessage());
@@ -262,6 +264,7 @@ public class PainlessMesh {
 //        }
     }
     private void intDisconnectMesh() {
+        Log.d("PainlessMesh", "intDisconnectMesh()");
         try {
             receiver.stopReceiver();
             sender.stopSender();

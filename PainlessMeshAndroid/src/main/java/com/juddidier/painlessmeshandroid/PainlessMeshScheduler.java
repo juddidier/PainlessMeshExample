@@ -16,7 +16,7 @@ public class PainlessMeshScheduler {
         Log.d("PainlessMeshScheduler","create()");
         this.caller = _caller;
         nodeSync = new NodeSync();
-//        nodeSync.start();
+        nodeSync.start();
         timeSync = new TimeSync();
     }
 
@@ -35,22 +35,22 @@ public class PainlessMeshScheduler {
         public void start() {
             Log.d("PainlessMeshScheduler.NodeSync","start()");
 
-//            syncThread = new HandlerThread("NodeSync");
-//            syncThread.start();
-//            syncHandler = new Handler(syncThread.getLooper());
-//            syncHandler.postDelayed(nodeSyncRunnable, 15000);
+            syncThread = new HandlerThread("NodeSync");
+            syncThread.start();
+            syncHandler = new Handler(syncThread.getLooper());
+            syncHandler.postDelayed(nodeSyncRunnable, 1000);
         }
 
         public void stop() {
             Log.d("PainlessMeshScheduler.NodeSync","stop()");
-//            try {
-//                syncHandler.removeCallbacks(nodeSyncRunnable);
-//                syncThread.quit();
-//                syncHandler = null;
-//                syncThread = null;
-//            } catch (Exception e) {
-//                Log.e("PainlessMeshScheduler.NodeSync.stop()",""+e.getMessage());
-//            }
+            try {
+                syncHandler.removeCallbacks(nodeSyncRunnable);
+                syncThread.quit();
+                syncHandler = null;
+                syncThread = null;
+            } catch (Exception e) {
+                Log.e("PainlessMeshScheduler.NodeSync.stop()",""+e.getMessage());
+            }
         }
 
         private final Runnable nodeSyncRunnable = new Runnable() {
@@ -60,19 +60,19 @@ public class PainlessMeshScheduler {
                 try {
                     sendNodeSync(false);
                 } catch (JSONException e) {
-                    Log.e("PainlessMeshSchedulerNodesync.run()",""+e.getMessage());
+                    Log.e("PainlessMeshScheduler.Nodesync.run()",""+e.getMessage());
                 }
-                syncHandler.postDelayed(this, 2000/* + new Random().nextInt(2000) - 1000*/);
+                syncHandler.postDelayed(this, 10000/* + new Random().nextInt(2000) - 1000*/);
             }
         };
 
         public void sendNodeSync(boolean response) throws JSONException {
-            Log.d("PainlessMeshScheduler.NodeSync","sendNodeSync()");
+            Log.d("PainlessMeshScheduler.NodeSync","sendNodeSync(): "+(response ? "response":"request"));
             JSONObject nodeMsg = new JSONObject();
             nodeMsg.put("dest", caller.apMeshNodeId);
             nodeMsg.put("from", caller.myMeshNodeId);
             nodeMsg.put("type", response ? 6 : 5);
-            Log.i("PainlessMesh.SendNodeSync",""+nodeMsg.toString());
+//            Log.i("PainlessMesh.SendNodeSync",""+nodeMsg.toString());
             caller.sender.sendData(nodeMsg.toString().getBytes());
         }
     }

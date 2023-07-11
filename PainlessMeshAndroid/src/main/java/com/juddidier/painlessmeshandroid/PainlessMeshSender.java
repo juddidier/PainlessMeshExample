@@ -64,7 +64,7 @@ public class PainlessMeshSender {
     }
 
     protected void sendData(byte[] data) {
-//        Log.d("PainlessMesh", "sendData()");
+        Log.d("PainlessMesh", "sendData()");
         try {
             sendQueue.add(new DataSet(data));
             synchronized (sync) {
@@ -92,7 +92,7 @@ public class PainlessMeshSender {
                     Iterator itr = sendQueue.iterator();
                     byte[] msg = ((DataSet) itr.next()).data;
                     itr.remove();
-                    Log.i("PainlessMesh.sent", new String(msg, "UTF-8"));
+                    Log.d("PainlessMesh.sent", new String(msg, "UTF-8"));
                     outStream.write(msg, 0, msg.length);
                     outStream.write(0);
                     outStream.flush();

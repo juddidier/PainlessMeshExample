@@ -68,7 +68,7 @@ public class PainlessMeshReceiver {
                         if (parsing) {
                             rcvData += (char) bufferElmt;
                             if (nested == 0) {
-                                Log.i("PainlessMesh.received", rcvData);
+                                Log.d("PainlessMesh.received", rcvData);
                                 decode(rcvData, rcvTime);
                                 parsing = false;
                                 rcvData = "";
@@ -127,6 +127,7 @@ public class PainlessMeshReceiver {
                     break;
                 case 5: /* NODE-SYNC-REQUEST */
                     caller.scheduler.nodeSync.sendNodeSync(true);
+                    break;
                 case 6: /* NODE-SYNC-REPLY */
                     ArrayList<Long> oldNodesList = new ArrayList<>(caller.nodesList);
                     Collections.sort(oldNodesList);
@@ -136,6 +137,7 @@ public class PainlessMeshReceiver {
                         getSubsNodesId(rcvJson.optJSONArray("subs"));
                         Collections.sort(caller.nodesList);
                     }
+                    Log.d("Painlessmesh"," changed Nodes: old "+oldNodesList.size()+" new "+caller.nodesList.size());
                     ArrayList<Long> addedItems = getAdditionalItems(oldNodesList, caller.nodesList);
                     ArrayList<Long> removedItems = getAdditionalItems(caller.nodesList, oldNodesList);
                     if (!addedItems.isEmpty() || !removedItems.isEmpty()) {
